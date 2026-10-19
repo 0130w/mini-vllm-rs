@@ -1,0 +1,19 @@
+/target
+
+# Python environments and caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Model weights: download from the links in README.md
+*.safetensors
+*.gguf
+*.pt
+*.pth
+/models/**/*.bin
+
+# Local download metadata and macOS files
+.cache/huggingface/
+.DS_Store
