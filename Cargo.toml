@@ -3,4 +3,17 @@ name = "mini-vllm"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = ["cuda"]
+cuda = ["dep:cuda-device", "dep:cuda-host", "dep:cuda-core"]
+
 [dependencies]
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+cuda-device = { git = "https://github.com/NVIDIA/cuda-rust.git", optional = true }
+cuda-host = { git = "https://github.com/NVIDIA/cuda-rust.git", optional = true }
+# Shared host-side runtime. It has to come from the same repository as
+# cuda-host, which depends on it; a crates.io copy is a second cuda-core.
+cuda-core = { git = "https://github.com/NVIDIA/cuda-rust.git", optional = true }
+half = "2.7.1"
+cuda-async = "0.4.0"
