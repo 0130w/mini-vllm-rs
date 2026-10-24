@@ -7,6 +7,10 @@ curl -fL --retry 3 -C - \
 ```
 
 ```bash
+apt-get install -y --no-install-recommends libcurand-dev-13-0
+```
+
+```bash
 cargo run
 ```
 
