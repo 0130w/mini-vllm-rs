@@ -1,4 +1,4 @@
-use crate::weights::TensorInfo;
+use crate::{model::Tensor, weights::TensorInfo};
 
 // see https://github.com/huggingface/transformers/blob/main/src/transformers/models/qwen3_5/modeling_qwen3_5.py#L811
 pub(crate) struct MlpWeights {
@@ -41,7 +41,9 @@ pub(crate) struct DecoderLayer {
     pub(crate) mlp: MlpWeights,
 }
 
-pub(crate) struct Qwen3_5ModelWeights {}
+pub(crate) struct Qwen3_5ModelWeights {
+    pub(crate) embed_tokens: Tensor,
+}
 
 // see https://github.com/huggingface/transformers/blob/main/src/transformers/models/qwen3_5/modeling_qwen3_5.py#L1209
 pub struct ModelWeights {

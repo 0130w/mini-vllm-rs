@@ -7,29 +7,19 @@ use crate::{
     models::qwen3_5::kernels::embeddings::{self, embedding_forward},
 };
 
-#[derive(Clone)]
-enum DType {
-    BF16,
-    FP32,
-}
-
-#[derive(Clone)]
-struct TensorView<T> {
-    storage: Arc<DeviceBuffer<T>>,
-    byte_offset: usize,
-    byte_len: usize,
-    shape: Vec<usize>,
-    dtype: DType,
-}
-
 struct Embedding {
-    weight: TensorView<u16>, // [vocab_size, hidden_size]
+    weight: Tensor, // [vocab_size, hidden_size]
 }
 
 impl Embedding {
     /// [seq_len] token IDs -> [seq_len, hidden_size].
     fn forward(&self, token_ids: &[u32], ctx: &Arc<CudaContext>) -> Tensor {
-        unimplemented!()
+        let shape = self.weight.shape();
+        assert_eq!(shape.len(), 2, "embedding weight must be 2D");
+        let hidden_size = shape[1];
+        let output_buffer =
+            embedding_forward(ctx, token_ids, self.weight.as_bf16_bits(), hidden_size);
+        Tensor::from_bf16_bits(output_buffer, vec![token_ids.len(), hidden_size])
     }
 
     /// Project hidden states to logits using the same embedding weight.
@@ -141,8 +131,8 @@ struct Qwen3_5TextModel {
 }
 
 impl Qwen3_5TextModel {
-    fn embed_tokens(&self, token_ids: &[u32]) -> Tensor {
-        unimplemented!()
+    fn embed_tokens(&self, token_ids: &[u32], ctx: &Arc<CudaContext>) -> Tensor {
+        self.embed_tokens.forward(token_ids, ctx)
     }
 
     /// Embeddings -> final hidden states; positions supplied by the outer model.
@@ -156,6 +146,7 @@ impl Qwen3_5TextModel {
 }
 
 pub struct Qwen3_5 {
+    ctx: Arc<CudaContext>,
     language_model: Qwen3_5TextModel,
 }
 
@@ -163,7 +154,7 @@ impl Model for Qwen3_5 {
     fn forward(&mut self, token_ids: &[u32]) -> Tensor {
         // One unpadded text request; recompute the whole prefix without cache.
         let position_ids: Vec<usize> = (0..token_ids.len()).collect();
-        let embeddings = self.language_model.embed_tokens(token_ids);
+        let embeddings = self.language_model.embed_tokens(token_ids, &self.ctx);
         let hidden = self.language_model.forward(embeddings, &position_ids);
         self.lm_head(&hidden)
     }
