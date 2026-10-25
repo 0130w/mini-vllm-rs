@@ -8,7 +8,7 @@ use std::{
 use cuda_core::{CudaContext, DeviceBuffer};
 
 pub use crate::models::qwen3_5::weights::ModelWeights;
-use crate::{model::Tensor, models::qwen3_5::weights::Qwen3_5ModelWeights};
+use crate::model::Tensor;
 
 #[derive(serde::Deserialize, Debug)]
 pub(crate) struct TensorInfo {
@@ -18,8 +18,8 @@ pub(crate) struct TensorInfo {
     pub(crate) offsets: [u64; 2],
 }
 
-/// read safetensor files
-pub fn load_weights(ctx: &Arc<CudaContext>) -> Result<ModelWeights> {
+/// Load only the embedding tensor until full model-weight assembly is implemented.
+pub fn load_weights(ctx: &Arc<CudaContext>) -> Result<Tensor> {
     let model_path: &str = "models/qwen-3.5-0.8B/model.safetensors-00001-of-00001.safetensors";
     let mut safetensors_file = File::open(model_path)?;
     // safetensors file header_size is exactly 8 bytes
@@ -63,6 +63,10 @@ pub fn load_weights(ctx: &Arc<CudaContext>) -> Result<ModelWeights> {
     let byte_len =
         usize::try_from(byte_len).map_err(|_| invalid("embedding byte length exceeds usize"))?;
 
+    if byte_len % 2 != 0 {
+        return Err(invalid("BF16 data length must be a multiple of 2"));
+    }
+
     let data_start = 8u64
         .checked_add(header_size as u64)
         .ok_or_else(|| invalid("data start overflow"))?;
@@ -79,11 +83,11 @@ pub fn load_weights(ctx: &Arc<CudaContext>) -> Result<ModelWeights> {
         return Err(invalid("embedding data exceeds file length"));
     }
 
-    safetensors_file.seek(SeekFrom::Start((file_offset)))?;
+    safetensors_file.seek(SeekFrom::Start(file_offset))?;
 
     let mut bytes = vec![0u8; byte_len];
 
-    safetensors_file.read_exact(&mut bytes);
+    safetensors_file.read_exact(&mut bytes)?;
 
     // BF16 occupies 2 bytes
     let bits: Vec<u16> = bytes
@@ -103,7 +107,5 @@ pub fn load_weights(ctx: &Arc<CudaContext>) -> Result<ModelWeights> {
 
     let embed_tokens = Tensor::from_bf16_bits(buffer, shape);
 
-    Ok(ModelWeights {
-        qwen3_5_model_weights: Qwen3_5ModelWeights { embed_tokens },
-    })
+    Ok(embed_tokens)
 }

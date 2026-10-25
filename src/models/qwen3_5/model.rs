@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use cuda_core::{CudaContext, DeviceBuffer};
+use cuda_core::CudaContext;
 
 use crate::{
     model::{Model, Tensor},
-    models::qwen3_5::kernels::embeddings::{self, embedding_forward},
+    models::qwen3_5::kernels::embeddings::embedding_forward,
 };
 
 struct Embedding {
@@ -12,8 +12,20 @@ struct Embedding {
 }
 
 impl Embedding {
+    fn new(weight: Tensor) -> Self {
+        let shape = weight.shape();
+        assert_eq!(shape.len(), 2, "embedding weight must be 2D");
+        assert!(
+            shape[0] > 0 && shape[1] > 0,
+            "embedding dimensions must be nonzero"
+        );
+        // check whether it uses bf16 storage
+        let _ = weight.as_bf16_bits();
+        Self { weight }
+    }
+
     /// [seq_len] token IDs -> [seq_len, hidden_size].
-    fn forward(&self, token_ids: &[u32], ctx: &Arc<CudaContext>) -> Tensor {
+    pub fn forward(&self, token_ids: &[u32], ctx: &Arc<CudaContext>) -> Tensor {
         let shape = self.weight.shape();
         assert_eq!(shape.len(), 2, "embedding weight must be 2D");
         let hidden_size = shape[1];
