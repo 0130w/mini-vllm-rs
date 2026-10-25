@@ -1,0 +1,16 @@
+{
+  "rust-analyzer.runnables.test.overrideCommand": [
+    "cargo",
+    "oxide",
+    "test",
+    "--arch",
+    "sm_120",
+    "--",
+    "--package",
+    "${package}",
+    "${target_arg}",
+    "${target}",
+    "--",
+    "${executable_args}"
+  ]
+}
