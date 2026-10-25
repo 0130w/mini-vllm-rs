@@ -1,11 +1,35 @@
-use crate::model::{Model, Tensor};
+use std::sync::Arc;
 
-struct Embedding {}
+use cuda_core::{CudaContext, DeviceBuffer};
+
+use crate::{
+    model::{Model, Tensor},
+    models::qwen3_5::kernels::embeddings::{self, embedding_forward},
+};
+
+#[derive(Clone)]
+enum DType {
+    BF16,
+    FP32,
+}
+
+#[derive(Clone)]
+struct TensorView<T> {
+    storage: Arc<DeviceBuffer<T>>,
+    byte_offset: usize,
+    byte_len: usize,
+    shape: Vec<usize>,
+    dtype: DType,
+}
+
+struct Embedding {
+    weight: TensorView<u16>, // [vocab_size, hidden_size]
+}
 
 impl Embedding {
     /// [seq_len] token IDs -> [seq_len, hidden_size].
-    fn forward(&self, _token_ids: &[u32]) -> Tensor {
-        unimplemented!("embedding lookup")
+    fn forward(&self, token_ids: &[u32], ctx: &Arc<CudaContext>) -> Tensor {
+        unimplemented!()
     }
 
     /// Project hidden states to logits using the same embedding weight.
@@ -118,7 +142,7 @@ struct Qwen3_5TextModel {
 
 impl Qwen3_5TextModel {
     fn embed_tokens(&self, token_ids: &[u32]) -> Tensor {
-        self.embed_tokens.forward(token_ids)
+        unimplemented!()
     }
 
     /// Embeddings -> final hidden states; positions supplied by the outer model.
